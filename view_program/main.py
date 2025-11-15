@@ -1,8 +1,8 @@
 import tkinter as tk
 from sys import platform,exit
-from tkinter import ttk
+from tkinter import ttk,simpledialog
 import os.path
-from tkinter.messagebox import showerror
+from tkinter.messagebox import showerror,showinfo
 
 import pymupdf
 from PIL import ImageTk
@@ -23,9 +23,19 @@ def get_resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 def upd_title():
-    app.title(f"{doc.metadata["title"]}-{now_page+1}/{all_page}")
+    app.title(f"{doc.metadata["title"]}-{now_page+1}/{all_page} 按[Control+G]跳转")
 def upd_bar():
     page_bar["value"] = now_page+1
+def go_button(event : tk.Event):
+    i = simpledialog.askinteger("请输入",f"页数(1-{all_page})")
+    if (i-1)>=all_page or (i-1)<0 :
+        showinfo("提示","输入不合法")
+        return
+    global now_page
+    now_page = i-1
+    upd_image()
+    upd_title()
+    upd_bar()
 def upd_image():
     try:
         pag_ = doc.load_page(now_page)
@@ -103,6 +113,7 @@ if __name__ == "__main__":
         app.bind("<Button-4>",s_ch_up)
     else:
         app.bind("<MouseWheel>",s_ch)
+    app.bind("<Control-g>",go_button)
     upd_image()
     #run
     app.mainloop()
