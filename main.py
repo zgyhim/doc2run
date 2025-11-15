@@ -9,6 +9,7 @@ import sys
 from tkinter.filedialog import askopenfilename,asksaveasfilename
 toolbox = ip.select("选择功能",choices=["编译","检测依赖","退出"])
 while True:
+    os.system("conda deactivate")
     clilib.cleans()
     clilib.print_with_box("""    ____  ____  _________   ____  __  ___   __
    / __ \\/ __ \\/ ____/__ \\ / __ \\/ / / / | / /
@@ -26,7 +27,7 @@ while True:
         clilib.print_with_box("依赖检测")
         print("开始测试")
         print("pyinstall-",end="")
-        if os.system(f"{sys.executable} {sys.executable.rsplit('/',1)[0]}/pyinstaller -v") == 0:
+        if os.system(f"pyinstaller -v") == 0:
             print(Fore.GREEN + "OK" + Style.RESET_ALL)
         else:
             print(Fore.RED + "ERROR" + Style.RESET_ALL)
@@ -66,7 +67,7 @@ while True:
         shutil.copytree("view_program",f"view_envs/{fid}")
         os.chdir(f"view_envs/{fid}")
         shutil.copy(fp,"file")
-        os.system(f"{sys.executable} {sys.executable.rsplit('/',1)[0]}/pyinstaller main.spec")
+        os.system(f"pyinstaller main.spec")
         if not os.path.exists("./dist/main"):
             print(Fore.RED + "编译失败" + Style.RESET_ALL)
             input("按下回车键退出")
