@@ -1,83 +1,119 @@
-import os
-import uuid
-import shutil
-from InquirerPy import inquirer as ip
-from PyInstaller.compat import system
-from colorama import init,Fore,Back,Style
-import clilib
-import sys
-from tkinter.filedialog import askopenfilename,asksaveasfilename
-toolbox = ip.select("选择功能",choices=["编译","检测依赖","退出"])
-while True:
-    os.system("conda deactivate")
-    clilib.cleans()
-    clilib.print_with_box("""    ____  ____  _________   ____  __  ___   __
-   / __ \\/ __ \\/ ____/__ \\ / __ \\/ / / / | / /
-  / / / / / / / /    __/ // /_/ / / / /  |/ / 
- / /_/ / /_/ / /___ / __// _, _/ /_/ / /|  /  
-/_____/\\____/\\____//____/_/ |_|\\____/_/ |_/   
-                                              """)
+import tkinter as tk
+from sys import platform,exit
+from tkinter import ttk,simpledialog
+import os.path
+from tkinter.messagebox import showerror,showinfo
 
-    c = toolbox.execute()
-    if c == "退出":
-        clilib.cleans()
-        exit(0)
-    if c == "检测依赖":
-        clilib.cleans()
-        clilib.print_with_box("依赖检测")
-        print("开始测试")
-        print("pyinstall-",end="")
-        if os.system(f"pyinstaller -v") == 0:
-            print(Fore.GREEN + "OK" + Style.RESET_ALL)
-        else:
-            print(Fore.RED + "ERROR" + Style.RESET_ALL)
-        print("pymupdf---",end="")
-        try: import pymupdf
-        except Exception:
-            print(Fore.RED + "ERROR" + Style.RESET_ALL)
-        else:
-            print(Fore.GREEN + "OK" + Style.RESET_ALL)
-        print("pillow----",end="")
-        try: import PIL
-        except Exception:
-            print(Fore.RED + "ERROR" + Style.RESET_ALL)
-        else:
-            print(Fore.GREEN + "OK" + Style.RESET_ALL)
-        print("测试完成")
-        input("按下回车键退出")
-    if c == "编译":
-        fp = askopenfilename(title="选择文档",filetypes=(("Text files", "*.txt"), ("All files", "*.*"),("PDF files","*.pdf"),("XPS files","*.xps"),("EPUB files","*.epub"),("MOBI files","*.mobi"),("FB2","*.fb2"),("CBZ files","*.cbz"),("SVG files","*.svg")))
-        print(fp)
-        if fp == "" or fp is None or fp == ():
-            continue
-        op = asksaveasfilename(title="文件保存",filetypes=(("Exe","*.exe"),("ELF","*")))
-        print(op)
-        if op == "" or op is None or op == ():
-            continue
-        clilib.cleans()
-        clilib.print_with_box("编译")
-        fid = uuid.uuid4()
-        print(f"生成UUID:f{fid}")
-        if not os.path.exists("view_envs"):
-            os.mkdir("view_envs")
-        if not os.path.exists("output"):
-            os.mkdir("output")
-        if os.path.exists(f"view_envs/{fid}"):
-            shutil.rmtree(f"view_envs/{fid}")
-        shutil.copytree("view_program",f"view_envs/{fid}")
-        os.chdir(f"view_envs/{fid}")
-        shutil.copy(fp,"file")
-        os.system(f"pyinstaller main.spec")
-        if not os.path.exists("./dist/main"):
-            print(Fore.RED + "编译失败" + Style.RESET_ALL)
-            input("按下回车键退出")
-            os.chdir("../..")
-            shutil.rmtree(f"view_envs/{fid}")
-            continue
-        if os.path.exists(op):
-            os.remove(op)
-        shutil.copy("./dist/main",op)
-        os.chdir("../..")
-        shutil.rmtree(f"view_envs/{fid}")
-        print(Fore.GREEN + "完成" + Style.RESET_ALL)
-        input("按下回车键退出")
+import pymupdf
+from PIL import ImageTk
+
+now_page = 0
+all_page = 0
+doc = None
+page_bar = None
+image_doc = None
+dpi = 83
+
+
+def get_resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+def upd_title():
+    app.title(f"{doc.metadata["title"]}-{now_page+1}/{all_page} 按[Control+G]跳转")
+def upd_bar():
+    page_bar["value"] = now_page+1
+def go_button(event : tk.Event):
+    i = simpledialog.askinteger("请输入",f"页数(1-{all_page})")
+    if (i-1)>=all_page or (i-1)<0 :
+        showinfo("提示","输入不合法")
+        return
+    global now_page
+    now_page = i-1
+    upd_image()
+    upd_title()
+    upd_bar()
+def upd_image():
+    try:
+        pag_ = doc.load_page(now_page)
+        pix = pag_.get_pixmap(dpi=dpi)
+        pili = pix.pil_image()
+        tki = ImageTk.PhotoImage(pili)
+        image_doc.config(image=tki)
+        image_doc.image = tki
+    except Exception as e:
+        showerror(title="错误",message=f"渲染错误：\n{e}")
+def on_up():
+    global now_page
+    if now_page <= 0:
+        return
+    now_page = now_page -1
+    upd_title()
+    upd_bar()
+    upd_image()
+def on_next():
+    global now_page
+    if now_page + 1 >= all_page:
+        return
+    now_page = now_page +1
+    upd_title()
+    upd_bar()
+    upd_image()
+def s_ch(event : tk.Event):
+    global dpi
+    if dpi - event.delta <= 0:
+        return
+    dpi = dpi - event.delta
+    upd_image()
+def s_ch_up(event : tk.Event):
+    global dpi
+    dpi = dpi + 2
+    upd_image()
+def s_ch_down(event : tk.Event):
+    global dpi
+    if dpi - 2 <= 0:
+        return
+    dpi = dpi - 2
+    upd_image()
+if __name__ == "__main__":
+    #init
+    try:
+        doc = pymupdf.open(get_resource_path("file"))
+    except Exception as e:
+        showerror("错误",f"文件加载错误:{e}")
+        exit(1)
+    app = tk.Tk()
+    try:
+        app.iconphoto(False, tk.PhotoImage(file=get_resource_path("icon.png")))
+    except Exception as e:
+        showerror("错误",f"图标加载错误{e}")
+    app.geometry("1024x720")
+    all_page = doc.page_count
+    upd_title()
+    #工具栏定义，初始化
+    top_frame = tk.Frame(app,height=30)
+    top_frame.pack(fill="x")
+    page_bar = ttk.Progressbar(top_frame,orient="horizontal")
+    up_page = tk.Button(top_frame,text="上一页",command=on_up)
+    next_page = tk.Button(top_frame,text="下一页",command=on_next)
+    up_page.place(relwidth=0.1,relheight=1,relx=0)
+    next_page.place(relwidth=0.1,relheight=1,relx=0.9)
+    page_bar.place(relheight=1,relwidth=0.8,relx=0.1)
+    page_bar["maximum"] = all_page
+    upd_bar()
+    #文章初始化
+    image_doc = tk.Label(app,background="black")
+    image_doc.pack(fill="both")
+    #滚轮-win man and linux
+    if platform == "linux":
+        app.bind("<Button-5>",s_ch_down)
+        app.bind("<Button-4>",s_ch_up)
+    else:
+        app.bind("<MouseWheel>",s_ch)
+    app.bind("<Control-g>",go_button)
+    upd_image()
+    #run
+    app.mainloop()
